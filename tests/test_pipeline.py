@@ -23,6 +23,8 @@ from conformal import ConformalClassifier, LABELS  # noqa: E402
 from threshold import youden_threshold, cost_threshold  # noqa: E402
 from drift import psi, drift_report, _simulate_drift  # noqa: E402
 from bias_mitigation import mitigate  # noqa: E402
+from deep_model import build_model as build_deep_model  # noqa: E402
+from load_dataset import ingest  # noqa: E402
 
 
 def _fit_calibrated(df):
@@ -212,6 +214,40 @@ def test_bias_mitigation_improves_parity():
     assert di(after) >= di(before) - 1e-6
 
 
+def test_deep_model_trains_and_predicts():
+    df = generate(n_samples=400, seed=14)
+    model = build_deep_model()
+    model.fit(df[NUMERIC_FEATURES], df[TARGET])
+
+    proba = model.predict_proba(df[NUMERIC_FEATURES])
+    assert proba.shape == (len(df), 2)
+    assert ((proba >= 0) & (proba <= 1)).all()
+    preds = model.predict(df[NUMERIC_FEATURES])
+    assert set(pd.unique(preds)) <= {0, 1}
+    # Beats random on its own training data.
+    assert model.score(df[NUMERIC_FEATURES], df[TARGET]) > 0.7
+
+
+def test_load_dataset_ingest_maps_columns():
+    import io
+    raw = io.StringIO(
+        "exp_years,degree,skills_pct,interview,comm,certs,projects,cgpa,hired\n"
+        "7,Master,88,82,80,4,10,3.8,1\n"
+        "0,High School,35,40,45,0,1,2.5,0\n"
+    )
+    mapping = {
+        "exp_years": "years_experience", "degree": "education_level",
+        "skills_pct": "skill_match_score", "interview": "interview_score",
+        "comm": "communication_score", "certs": "num_certifications",
+        "projects": "num_projects", "cgpa": "gpa", "hired": "shortlisted",
+    }
+    df = ingest(raw, mapping)
+    assert set(NUMERIC_FEATURES + [TARGET]) <= set(df.columns)
+    # Textual education mapped to the ordinal scale.
+    assert df.loc[0, "education_level"] == 2   # Master
+    assert df.loc[1, "education_level"] == 0   # High School
+
+
 if __name__ == "__main__":
     test_generate_shape_and_columns()
     test_generate_has_both_classes()
@@ -229,4 +265,6 @@ if __name__ == "__main__":
     test_threshold_finders_return_valid_values()
     test_drift_detects_shift()
     test_bias_mitigation_improves_parity()
+    test_deep_model_trains_and_predicts()
+    test_load_dataset_ingest_maps_columns()
     print("✓ All tests passed")

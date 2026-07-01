@@ -13,6 +13,9 @@ optuna>=3.5
 shap>=0.44
 mlflow>=2.10
 
+# Deep learning (optional — falls back to scikit-learn MLP if absent)
+torch>=2.0
+
 # Web UI
 streamlit>=1.30
 

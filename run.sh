@@ -20,6 +20,9 @@ python src/visualize.py
 echo "==> Comparing SVM against other models"
 python src/compare_models.py
 
+echo "==> Training deep learning (neural network) model"
+python src/deep_model.py
+
 echo "==> Fairness / bias audit"
 python src/fairness.py
 
