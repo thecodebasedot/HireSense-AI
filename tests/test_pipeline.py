@@ -18,6 +18,11 @@ from explain import explain_instance, global_importance  # noqa: E402
 from job_profiles import list_profiles, load_profile, meets_requirements  # noqa: E402
 from fairness import audit, summarize  # noqa: E402
 from resume_parser import parse_resume  # noqa: E402
+from validation import validate, is_valid  # noqa: E402
+from conformal import ConformalClassifier, LABELS  # noqa: E402
+from threshold import youden_threshold, cost_threshold  # noqa: E402
+from drift import psi, drift_report, _simulate_drift  # noqa: E402
+from bias_mitigation import mitigate  # noqa: E402
 
 
 def _fit_calibrated(df):
@@ -152,6 +157,61 @@ def test_resume_parser_extracts_features():
     assert features.loc[0, "skill_match_score"] == 100.0
 
 
+def test_validation_detects_bad_data():
+    df = generate(n_samples=50, seed=9)
+    assert is_valid(df[NUMERIC_FEATURES])
+    bad = df[NUMERIC_FEATURES].copy()
+    bad.loc[0, "gpa"] = 9.0  # out of [0, 4]
+    issues = validate(bad)
+    assert any("gpa" in i for i in issues)
+
+
+def test_conformal_coverage_meets_target():
+    df = generate(n_samples=1200, seed=10)
+    model = _fit_calibrated(df)
+    X, y = df[NUMERIC_FEATURES], df[TARGET]
+    Xc, Xt = X.iloc[:800], X.iloc[800:]
+    yc, yt = y.iloc[:800], y.iloc[800:]
+
+    cp = ConformalClassifier(model, alpha=0.1).calibrate(Xc, yc)
+    sets = cp.predict_sets(Xt)
+    covered = sum(LABELS[t] in s for s, t in zip(sets, yt))
+    # Allow a small finite-sample slack below the 0.90 target.
+    assert covered / len(yt) >= 0.85
+
+
+def test_threshold_finders_return_valid_values():
+    df = generate(n_samples=600, seed=11)
+    model = _fit_calibrated(df)
+    proba = model.predict_proba(df[NUMERIC_FEATURES])[:, 1]
+    jt = youden_threshold(df[TARGET], proba)
+    ct, cost = cost_threshold(df[TARGET], proba)
+    assert 0.0 <= jt <= 1.0
+    assert 0.0 <= ct <= 1.0 and cost >= 0
+
+
+def test_drift_detects_shift():
+    df = generate(n_samples=500, seed=12)
+    # Identical distribution -> near-zero PSI.
+    assert psi(df["gpa"].values, df["gpa"].values) < 0.01
+    # Simulated drift -> at least one MAJOR feature.
+    report = drift_report(df, _simulate_drift(df))
+    assert (report["severity"] == "MAJOR").any()
+
+
+def test_bias_mitigation_improves_parity():
+    df = generate(n_samples=1000, seed=13)
+    model = _fit_calibrated(df)
+    _, before, after = mitigate(model, df)
+
+    def di(m):
+        r = m["selection_rate"]
+        return r.min() / r.max()
+
+    # Group-specific thresholds should not worsen demographic parity.
+    assert di(after) >= di(before) - 1e-6
+
+
 if __name__ == "__main__":
     test_generate_shape_and_columns()
     test_generate_has_both_classes()
@@ -164,4 +224,9 @@ if __name__ == "__main__":
     test_job_profiles_load_and_requirements()
     test_fairness_audit_runs()
     test_resume_parser_extracts_features()
+    test_validation_detects_bad_data()
+    test_conformal_coverage_meets_target()
+    test_threshold_finders_return_valid_values()
+    test_drift_detects_shift()
+    test_bias_mitigation_improves_parity()
     print("✓ All tests passed")

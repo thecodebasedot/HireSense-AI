@@ -25,6 +25,21 @@ GROUP_COLUMN = "group"
 # --- Default decision threshold on shortlist probability ---
 DEFAULT_THRESHOLD = 0.5
 
+# --- Valid ranges per feature (used for data validation) ---
+FEATURE_RANGES = {
+    "years_experience": (0, 50),
+    "education_level": (0, 3),
+    "skill_match_score": (0, 100),
+    "interview_score": (0, 100),
+    "communication_score": (0, 100),
+    "num_certifications": (0, 50),
+    "num_projects": (0, 100),
+    "gpa": (0, 4),
+}
+
+# --- Model registry ---
+REGISTRY_DIR = MODEL_DIR / "registry"
+
 # --- Feature schema ---
 # Numeric features used to describe a job applicant.
 # Order matters: predictions accept inputs in this order.

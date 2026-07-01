@@ -23,6 +23,24 @@ python src/compare_models.py
 echo "==> Fairness / bias audit"
 python src/fairness.py
 
+echo "==> Bias mitigation (group-specific thresholds)"
+python src/bias_mitigation.py
+
+echo "==> Optimal decision threshold"
+python src/threshold.py
+
+echo "==> Calibration diagnostics"
+python src/diagnostics.py
+
+echo "==> Conformal prediction (uncertainty)"
+python src/conformal.py
+
+echo "==> Data drift check (demo)"
+python src/drift.py --demo
+
+echo "==> Generating model card"
+python src/model_card.py
+
 echo "==> Demo: screening a strong applicant"
 python src/predict.py \
     --years-experience 6 --education-level 2 \
