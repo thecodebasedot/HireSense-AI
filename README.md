@@ -51,12 +51,17 @@ HireSense-AI/
 │   ├── config.py         # feature schema, paths, constants
 │   ├── generate_data.py  # synthetic applicant dataset generator
 │   ├── train.py          # SVM training + hyperparameter tuning
-│   └── predict.py        # screen new applicants (single / batch)
+│   ├── predict.py        # screen new applicants (single / batch)
+│   ├── explain.py        # global + per-applicant explanations
+│   └── visualize.py      # evaluation plots (PNG)
 ├── data/
 │   └── sample_applicants.csv   # example input for batch scoring
 ├── models/               # trained model is saved here
+├── reports/              # generated evaluation plots
 ├── tests/
 │   └── test_pipeline.py  # smoke tests
+├── app_streamlit.py      # interactive web UI
+├── app_api.py            # REST API (FastAPI)
 ├── run.sh                # full pipeline in one command
 └── requirements.txt
 ```
@@ -97,6 +102,71 @@ python src/predict.py \
 # 4) Screen many applicants from a CSV
 python src/predict.py --csv data/sample_applicants.csv
 ```
+
+---
+
+## 🖥️ Web UI (Streamlit)
+
+An interactive form: enter an applicant's details and get an instant
+decision, confidence score, and a per-feature explanation of *why*.
+
+```bash
+streamlit run app_streamlit.py
+```
+
+## 🔌 REST API (FastAPI)
+
+Serve the model over HTTP for other systems to call.
+
+```bash
+uvicorn app_api:app --reload
+# interactive docs at http://127.0.0.1:8000/docs
+```
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET`  | `/health` | Service + model status |
+| `POST` | `/predict` | Screen a single applicant |
+| `POST` | `/predict/batch` | Screen a list of applicants |
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"years_experience":6,"education_level":2,"skill_match_score":85,
+       "interview_score":80,"communication_score":78,"num_certifications":3,
+       "num_projects":8,"gpa":3.7}'
+# -> {"decision":"Shortlist","shortlist_probability":0.99,"education":"Master"}
+```
+
+## 🔍 Explainability
+
+Understand *why* the model decides the way it does.
+
+```bash
+# Global: which features matter most across all applicants
+python src/explain.py
+```
+
+The Streamlit UI also shows a per-applicant breakdown of how each feature
+pushed the shortlist probability up or down.
+
+## 📊 Visualizations
+
+Generate evaluation plots into `reports/`:
+
+```bash
+python src/visualize.py
+```
+
+| Confusion Matrix | ROC Curve |
+|:---:|:---:|
+| ![Confusion Matrix](reports/confusion_matrix.png) | ![ROC Curve](reports/roc_curve.png) |
+
+| Feature Importance | Class Distribution |
+|:---:|:---:|
+| ![Feature Importance](reports/feature_importance.png) | ![Class Distribution](reports/class_distribution.png) |
 
 ---
 

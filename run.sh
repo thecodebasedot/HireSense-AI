@@ -14,6 +14,9 @@ python src/generate_data.py
 echo "==> Training SVM model"
 python src/train.py
 
+echo "==> Generating evaluation plots"
+python src/visualize.py
+
 echo "==> Demo: screening a strong applicant"
 python src/predict.py \
     --years-experience 6 --education-level 2 \

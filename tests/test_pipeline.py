@@ -13,6 +13,14 @@ from config import NUMERIC_FEATURES, TARGET  # noqa: E402
 from generate_data import generate  # noqa: E402
 from train import build_search, calibrate  # noqa: E402
 from predict import screen  # noqa: E402
+from explain import explain_instance, global_importance  # noqa: E402
+
+
+def _fit_calibrated(df):
+    """Helper: tune + calibrate a model on a dataframe."""
+    search = build_search()
+    search.fit(df[NUMERIC_FEATURES], df[TARGET])
+    return calibrate(search.best_estimator_, df[NUMERIC_FEATURES], df[TARGET])
 
 
 def test_generate_shape_and_columns():
@@ -62,9 +70,35 @@ def test_screen_rejects_missing_columns():
         pass
 
 
+def test_global_importance_ranks_all_features():
+    df = generate(n_samples=600, seed=4)
+    model = _fit_calibrated(df)
+
+    imp = global_importance(model, df[NUMERIC_FEATURES], df[TARGET])
+    assert set(imp["feature"]) == set(NUMERIC_FEATURES)
+    # Importance is sorted descending.
+    assert imp["importance"].is_monotonic_decreasing
+
+
+def test_explain_instance_contributions():
+    df = generate(n_samples=600, seed=5)
+    model = _fit_calibrated(df)
+    baseline = df[NUMERIC_FEATURES].median()
+
+    row = df[NUMERIC_FEATURES].head(1).copy()
+    contrib = explain_instance(model, row, baseline=baseline)
+
+    assert set(contrib["feature"]) == set(NUMERIC_FEATURES)
+    assert {"feature", "value", "contribution"} <= set(contrib.columns)
+    # Contributions are ordered by absolute impact.
+    assert contrib["contribution"].abs().is_monotonic_decreasing
+
+
 if __name__ == "__main__":
     test_generate_shape_and_columns()
     test_generate_has_both_classes()
     test_train_and_predict_end_to_end()
     test_screen_rejects_missing_columns()
+    test_global_importance_ranks_all_features()
+    test_explain_instance_contributions()
     print("✓ All tests passed")
