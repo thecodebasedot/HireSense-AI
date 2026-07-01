@@ -10,9 +10,20 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 MODEL_DIR = ROOT_DIR / "models"
+REPORTS_DIR = ROOT_DIR / "reports"
+PROFILES_DIR = ROOT_DIR / "profiles"
 
 DATASET_PATH = DATA_DIR / "applicants.csv"
 MODEL_PATH = MODEL_DIR / "hiresense_svm.joblib"
+
+# --- Model metadata ---
+MODEL_VERSION = "1.1.0"
+
+# --- Protected attribute (for fairness auditing only; NOT a model feature) ---
+GROUP_COLUMN = "group"
+
+# --- Default decision threshold on shortlist probability ---
+DEFAULT_THRESHOLD = 0.5
 
 # --- Feature schema ---
 # Numeric features used to describe a job applicant.

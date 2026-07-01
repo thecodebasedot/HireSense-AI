@@ -5,6 +5,8 @@ Pipeline: StandardScaler -> SVC. SVMs are distance-based, so scaling the
 features is essential. GridSearchCV tunes the kernel and regularisation.
 """
 import argparse
+import logging
+from datetime import datetime, timezone
 
 import joblib
 import pandas as pd
@@ -23,10 +25,14 @@ from sklearn.metrics import (
 from config import (
     DATASET_PATH,
     MODEL_PATH,
+    MODEL_VERSION,
     NUMERIC_FEATURES,
     RANDOM_STATE,
     TARGET,
 )
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("hiresense.train")
 
 
 def load_data(path=DATASET_PATH):
@@ -117,19 +123,22 @@ def main() -> None:
     print("\nClassification report:")
     print(classification_report(y_test, y_pred, target_names=["Rejected", "Shortlisted"]))
 
-    # --- Persist the fitted pipeline plus metadata ---
+    # --- Persist the fitted pipeline plus metadata (versioned) ---
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(
-        {
-            "model": model,
-            "features": NUMERIC_FEATURES,
-            "best_params": search.best_params_,
-            "test_accuracy": float(accuracy_score(y_test, y_pred)),
-            "test_roc_auc": float(roc_auc_score(y_test, y_proba)),
-        },
-        MODEL_PATH,
-    )
-    print(f"\n✓ Model saved to {MODEL_PATH}")
+    trained_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    bundle = {
+        "model": model,
+        "version": MODEL_VERSION,
+        "trained_at": trained_at,
+        "algorithm": "SVM",
+        "features": NUMERIC_FEATURES,
+        "best_params": search.best_params_,
+        "test_accuracy": float(accuracy_score(y_test, y_pred)),
+        "test_roc_auc": float(roc_auc_score(y_test, y_proba)),
+    }
+    joblib.dump(bundle, MODEL_PATH)
+    logger.info("Model v%s trained at %s saved to %s", MODEL_VERSION, trained_at, MODEL_PATH)
+    print(f"\n✓ Model v{MODEL_VERSION} saved to {MODEL_PATH}")
 
 
 if __name__ == "__main__":

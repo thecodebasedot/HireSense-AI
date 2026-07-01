@@ -41,6 +41,9 @@ The model uses the following eight attributes of each applicant:
 
 **Target:** `shortlisted` → `1` (shortlist) or `0` (reject)
 
+The dataset also carries a `group` column — a synthetic protected attribute
+used **only** by the fairness audit. It is never a model feature.
+
 ---
 
 ## 🗂️ Project Structure
@@ -48,21 +51,30 @@ The model uses the following eight attributes of each applicant:
 ```
 HireSense-AI/
 ├── src/
-│   ├── config.py         # feature schema, paths, constants
-│   ├── generate_data.py  # synthetic applicant dataset generator
-│   ├── train.py          # SVM training + hyperparameter tuning
-│   ├── predict.py        # screen new applicants (single / batch)
-│   ├── explain.py        # global + per-applicant explanations
-│   └── visualize.py      # evaluation plots (PNG)
+│   ├── config.py          # feature schema, paths, constants
+│   ├── generate_data.py   # synthetic applicant dataset generator
+│   ├── train.py           # SVM training, tuning, versioning + logging
+│   ├── predict.py         # screen / rank applicants (threshold + profiles)
+│   ├── explain.py         # global + per-applicant explanations
+│   ├── visualize.py       # evaluation plots (PNG)
+│   ├── compare_models.py  # SVM vs other classifiers
+│   ├── fairness.py        # bias / fairness audit
+│   ├── job_profiles.py    # per-role screening profiles
+│   ├── resume_parser.py   # extract features from text resumes
+│   └── report.py          # per-applicant PDF report
+├── profiles/              # job profile configs (JSON)
 ├── data/
-│   └── sample_applicants.csv   # example input for batch scoring
-├── models/               # trained model is saved here
-├── reports/              # generated evaluation plots
+│   ├── sample_applicants.csv   # example input for batch scoring
+│   └── sample_resume.txt       # example resume for the parser
+├── models/                # trained model is saved here
+├── reports/               # generated plots + PDF reports
 ├── tests/
-│   └── test_pipeline.py  # smoke tests
-├── app_streamlit.py      # interactive web UI
-├── app_api.py            # REST API (FastAPI)
-├── run.sh                # full pipeline in one command
+│   └── test_pipeline.py   # smoke tests
+├── .github/workflows/ci.yml  # GitHub Actions CI
+├── Dockerfile             # containerised REST API
+├── app_streamlit.py       # interactive web UI
+├── app_api.py             # REST API (FastAPI)
+├── run.sh                 # full pipeline in one command
 └── requirements.txt
 ```
 
@@ -167,6 +179,80 @@ python src/visualize.py
 | Feature Importance | Class Distribution |
 |:---:|:---:|
 | ![Feature Importance](reports/feature_importance.png) | ![Class Distribution](reports/class_distribution.png) |
+
+---
+
+## 🎚️ Ranking, Thresholds & Job Profiles
+
+```bash
+# Rank the top 3 candidates in a CSV
+python src/predict.py --csv data/sample_applicants.csv --top 3
+
+# Use a custom decision threshold (stricter screening)
+python src/predict.py --csv data/sample_applicants.csv --threshold 0.7
+
+# Apply a job profile (custom threshold + hard requirements)
+python src/predict.py --csv data/sample_applicants.csv --profile senior_engineer
+```
+
+Job profiles live in `profiles/*.json` and define a `threshold` plus hard
+`requirements` (minimums that veto a shortlist regardless of probability).
+Built-in profiles: `senior_engineer`, `junior_developer`.
+
+## 🆚 Model Comparison
+
+Confirm SVM is a justified choice by benchmarking it against other classifiers:
+
+```bash
+python src/compare_models.py
+```
+
+![Model Comparison](reports/model_comparison.png)
+
+## ⚖️ Fairness / Bias Audit
+
+Check whether decisions are distributed fairly across a protected group
+(demographic parity, disparate-impact "80% rule", equal opportunity):
+
+```bash
+python src/fairness.py
+```
+
+> These are diagnostics, not guarantees — always review hiring models with a
+> human and domain expertise.
+
+## 📄 Resume Parsing (NLP)
+
+Extract model features straight from a plain-text resume with transparent
+rule-based heuristics:
+
+```bash
+python src/resume_parser.py data/sample_resume.txt \
+    --job-skills python,sql,machine-learning --screen
+```
+
+## 🧾 PDF Report
+
+Generate a one-page PDF report for an applicant (decision, probability,
+per-feature explanation):
+
+```bash
+python src/report.py --name "Jane Doe" --years-experience 7 \
+    --education-level 2 --skill-match-score 85 --interview-score 80 \
+    --communication-score 78 --num-certifications 3 --num-projects 8 --gpa 3.8
+```
+
+## 🐳 Docker
+
+```bash
+docker build -t hiresense-ai .
+docker run -p 8000:8000 hiresense-ai   # REST API on http://localhost:8000
+```
+
+## 🔄 Continuous Integration
+
+`.github/workflows/ci.yml` runs the test suite on every push across Python
+3.10–3.12.
 
 ---
 
