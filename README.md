@@ -59,9 +59,23 @@ HireSense-AI/
 │   ├── visualize.py       # evaluation plots (PNG)
 │   ├── compare_models.py  # SVM vs other classifiers
 │   ├── fairness.py        # bias / fairness audit
+│   ├── bias_mitigation.py # group-specific thresholds to reduce bias
 │   ├── job_profiles.py    # per-role screening profiles
 │   ├── resume_parser.py   # extract features from text resumes
-│   └── report.py          # per-applicant PDF report
+│   ├── report.py          # per-applicant PDF report
+│   ├── tune_optuna.py     # Bayesian hyperparameter tuning
+│   ├── shap_explain.py    # SHAP explanations
+│   ├── conformal.py       # conformal prediction (uncertainty)
+│   ├── threshold.py       # optimal decision threshold
+│   ├── diagnostics.py     # calibration curve
+│   ├── drift.py           # data drift detection
+│   ├── validation.py      # input data validation
+│   ├── registry.py        # versioned model registry
+│   ├── model_card.py      # responsible-AI model card
+│   ├── deep_model.py      # deep learning (PyTorch/MLP) alternative
+│   ├── torch_mlp.py       # PyTorch MLP estimator
+│   └── load_dataset.py    # real-dataset ingestion + column mapping
+├── dashboard.py           # live analytics dashboard (Streamlit)
 ├── profiles/              # job profile configs (JSON)
 ├── data/
 │   ├── sample_applicants.csv   # example input for batch scoring
@@ -253,6 +267,124 @@ docker run -p 8000:8000 hiresense-ai   # REST API on http://localhost:8000
 
 `.github/workflows/ci.yml` runs the test suite on every push across Python
 3.10–3.12.
+
+---
+
+## 🧬 Advanced ML
+
+A suite of production-grade ML capabilities.
+
+### Modeling & Explainability
+
+```bash
+# Bayesian hyperparameter tuning (smarter than grid search)
+python src/train.py --optuna --trials 40
+
+# SHAP explanations (game-theoretic feature attributions)
+python src/shap_explain.py            # -> reports/shap_summary.png
+
+# Optimal decision threshold (Youden's J + cost-sensitive)
+python src/threshold.py --cost-fn 5 --cost-fp 1
+
+# Conformal prediction — flag uncertain candidates for human review
+python src/conformal.py --alpha 0.1
+```
+
+Conformal prediction returns a *prediction set* per applicant with a
+guaranteed coverage of `1 - alpha`; ambiguous cases come back as
+`{Reject, Shortlist}` = **Uncertain**, routing them to a human.
+
+### Responsible AI
+
+```bash
+# Reduce bias with group-specific thresholds (post-processing)
+python src/bias_mitigation.py
+
+# Calibration curve + Brier score + ECE
+python src/diagnostics.py             # -> reports/calibration_curve.png
+
+# Auto-generate a responsible-AI model card
+python src/model_card.py              # -> MODEL_CARD.md
+```
+
+### MLOps
+
+```bash
+# Detect data drift vs the training distribution (PSI + KS test)
+python src/drift.py --demo
+python src/drift.py data/new_batch.csv
+
+# Validate an input CSV against the schema and value ranges
+python src/validation.py data/sample_applicants.csv
+
+# Versioned model registry: list past runs and roll back
+python src/registry.py list
+python src/registry.py rollback <file>
+```
+
+- **Experiment tracking:** when `mlflow` is installed, every `train.py` run is
+  logged to a local `./mlruns` store (params, metrics, tuning method). View
+  with `mlflow ui`.
+- **Model registry:** each training run is archived under `models/registry/`
+  with its metrics, so you can audit history and roll back instantly.
+
+| SHAP Importance | Calibration Curve |
+|:---:|:---:|
+| ![SHAP](reports/shap_summary.png) | ![Calibration](reports/calibration_curve.png) |
+
+---
+
+## 🤖 Deep Learning Model
+
+SVM stays the project's primary algorithm, but a deep neural network is
+available as an alternative and for comparison. It uses **PyTorch** (a
+3-layer MLP `128→64→32` with dropout + early stopping) when installed, and
+falls back to scikit-learn's `MLPClassifier` otherwise. The saved bundle
+matches the SVM format, so screening, explainability, fairness, and conformal
+prediction all work with it unchanged.
+
+```bash
+# Train + evaluate the neural network
+python src/deep_model.py
+
+# Train it AND make it the active model used everywhere
+python src/deep_model.py --make-current
+```
+
+The neural net also appears in the model-comparison chart above.
+
+## 📊 Live Dashboard
+
+A multi-tab operational dashboard: overview + metrics, dataset explorer,
+batch CSV scoring with download, fairness audit, and drift monitoring — with
+a live SVM ↔ Neural-Network switch.
+
+```bash
+streamlit run dashboard.py
+```
+
+## 🗃️ Using Real Data
+
+Bring your own hiring CSV — map your columns to the HireSense schema, and the
+loader validates and standardises it (including textual education levels).
+
+```bash
+# 1) Print the expected schema + a mapping template
+python src/load_dataset.py --template
+
+# 2) Ingest your CSV with a column mapping (JSON), writing data/applicants.csv
+python src/load_dataset.py raw_hiring.csv --mapping mapping.json
+
+# 3) Train on it as usual
+python src/train.py
+```
+
+`mapping.json` looks like:
+
+```json
+{ "exp_years": "years_experience", "degree": "education_level",
+  "skills_pct": "skill_match_score", "hired": "shortlisted" }
+```
 
 ---
 

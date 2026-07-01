@@ -18,6 +18,13 @@ from explain import explain_instance, global_importance  # noqa: E402
 from job_profiles import list_profiles, load_profile, meets_requirements  # noqa: E402
 from fairness import audit, summarize  # noqa: E402
 from resume_parser import parse_resume  # noqa: E402
+from validation import validate, is_valid  # noqa: E402
+from conformal import ConformalClassifier, LABELS  # noqa: E402
+from threshold import youden_threshold, cost_threshold  # noqa: E402
+from drift import psi, drift_report, _simulate_drift  # noqa: E402
+from bias_mitigation import mitigate  # noqa: E402
+from deep_model import build_model as build_deep_model  # noqa: E402
+from load_dataset import ingest  # noqa: E402
 
 
 def _fit_calibrated(df):
@@ -152,6 +159,95 @@ def test_resume_parser_extracts_features():
     assert features.loc[0, "skill_match_score"] == 100.0
 
 
+def test_validation_detects_bad_data():
+    df = generate(n_samples=50, seed=9)
+    assert is_valid(df[NUMERIC_FEATURES])
+    bad = df[NUMERIC_FEATURES].copy()
+    bad.loc[0, "gpa"] = 9.0  # out of [0, 4]
+    issues = validate(bad)
+    assert any("gpa" in i for i in issues)
+
+
+def test_conformal_coverage_meets_target():
+    df = generate(n_samples=1200, seed=10)
+    model = _fit_calibrated(df)
+    X, y = df[NUMERIC_FEATURES], df[TARGET]
+    Xc, Xt = X.iloc[:800], X.iloc[800:]
+    yc, yt = y.iloc[:800], y.iloc[800:]
+
+    cp = ConformalClassifier(model, alpha=0.1).calibrate(Xc, yc)
+    sets = cp.predict_sets(Xt)
+    covered = sum(LABELS[t] in s for s, t in zip(sets, yt))
+    # Allow a small finite-sample slack below the 0.90 target.
+    assert covered / len(yt) >= 0.85
+
+
+def test_threshold_finders_return_valid_values():
+    df = generate(n_samples=600, seed=11)
+    model = _fit_calibrated(df)
+    proba = model.predict_proba(df[NUMERIC_FEATURES])[:, 1]
+    jt = youden_threshold(df[TARGET], proba)
+    ct, cost = cost_threshold(df[TARGET], proba)
+    assert 0.0 <= jt <= 1.0
+    assert 0.0 <= ct <= 1.0 and cost >= 0
+
+
+def test_drift_detects_shift():
+    df = generate(n_samples=500, seed=12)
+    # Identical distribution -> near-zero PSI.
+    assert psi(df["gpa"].values, df["gpa"].values) < 0.01
+    # Simulated drift -> at least one MAJOR feature.
+    report = drift_report(df, _simulate_drift(df))
+    assert (report["severity"] == "MAJOR").any()
+
+
+def test_bias_mitigation_improves_parity():
+    df = generate(n_samples=1000, seed=13)
+    model = _fit_calibrated(df)
+    _, before, after = mitigate(model, df)
+
+    def di(m):
+        r = m["selection_rate"]
+        return r.min() / r.max()
+
+    # Group-specific thresholds should not worsen demographic parity.
+    assert di(after) >= di(before) - 1e-6
+
+
+def test_deep_model_trains_and_predicts():
+    df = generate(n_samples=400, seed=14)
+    model = build_deep_model()
+    model.fit(df[NUMERIC_FEATURES], df[TARGET])
+
+    proba = model.predict_proba(df[NUMERIC_FEATURES])
+    assert proba.shape == (len(df), 2)
+    assert ((proba >= 0) & (proba <= 1)).all()
+    preds = model.predict(df[NUMERIC_FEATURES])
+    assert set(pd.unique(preds)) <= {0, 1}
+    # Beats random on its own training data.
+    assert model.score(df[NUMERIC_FEATURES], df[TARGET]) > 0.7
+
+
+def test_load_dataset_ingest_maps_columns():
+    import io
+    raw = io.StringIO(
+        "exp_years,degree,skills_pct,interview,comm,certs,projects,cgpa,hired\n"
+        "7,Master,88,82,80,4,10,3.8,1\n"
+        "0,High School,35,40,45,0,1,2.5,0\n"
+    )
+    mapping = {
+        "exp_years": "years_experience", "degree": "education_level",
+        "skills_pct": "skill_match_score", "interview": "interview_score",
+        "comm": "communication_score", "certs": "num_certifications",
+        "projects": "num_projects", "cgpa": "gpa", "hired": "shortlisted",
+    }
+    df = ingest(raw, mapping)
+    assert set(NUMERIC_FEATURES + [TARGET]) <= set(df.columns)
+    # Textual education mapped to the ordinal scale.
+    assert df.loc[0, "education_level"] == 2   # Master
+    assert df.loc[1, "education_level"] == 0   # High School
+
+
 if __name__ == "__main__":
     test_generate_shape_and_columns()
     test_generate_has_both_classes()
@@ -164,4 +260,11 @@ if __name__ == "__main__":
     test_job_profiles_load_and_requirements()
     test_fairness_audit_runs()
     test_resume_parser_extracts_features()
+    test_validation_detects_bad_data()
+    test_conformal_coverage_meets_target()
+    test_threshold_finders_return_valid_values()
+    test_drift_detects_shift()
+    test_bias_mitigation_improves_parity()
+    test_deep_model_trains_and_predicts()
+    test_load_dataset_ingest_maps_columns()
     print("✓ All tests passed")

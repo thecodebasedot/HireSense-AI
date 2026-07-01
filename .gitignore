@@ -14,10 +14,15 @@ env/
 
 # HireSense AI generated artifacts
 models/*.joblib
+models/registry/
 data/applicants.csv
 data/*_scored.csv
 reports/*.pdf
 reports/report_*.png
+
+# MLflow local tracking store
+mlruns/
+mlflow.db
 
 # IDE / OS
 .vscode/

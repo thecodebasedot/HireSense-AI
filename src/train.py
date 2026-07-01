@@ -3,6 +3,11 @@ HireSense AI — train a Support Vector Machine to screen job applicants.
 
 Pipeline: StandardScaler -> SVC. SVMs are distance-based, so scaling the
 features is essential. GridSearchCV tunes the kernel and regularisation.
+
+Optional extras:
+  --optuna         tune with Optuna (Bayesian) instead of GridSearchCV
+  --no-registry    skip registering the model in the registry
+MLflow tracking is used automatically when the `mlflow` package is installed.
 """
 import argparse
 import logging
@@ -30,9 +35,17 @@ from config import (
     RANDOM_STATE,
     TARGET,
 )
+from validation import validate
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("hiresense.train")
+
+# MLflow is optional — training works with or without it.
+try:
+    import mlflow
+    _HAS_MLFLOW = True
+except Exception:  # pragma: no cover - depends on environment
+    _HAS_MLFLOW = False
 
 
 def load_data(path=DATASET_PATH):
@@ -93,23 +106,44 @@ def calibrate(best_pipeline: Pipeline, X_train, y_train) -> CalibratedClassifier
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train the HireSense SVM model.")
     parser.add_argument("--test-size", type=float, default=0.2)
+    parser.add_argument("--optuna", action="store_true",
+                        help="Tune with Optuna (Bayesian) instead of GridSearchCV.")
+    parser.add_argument("--trials", type=int, default=40, help="Optuna trials.")
+    parser.add_argument("--no-registry", action="store_true",
+                        help="Do not register the model in the registry.")
     args = parser.parse_args()
 
     X, y = load_data()
+
+    # Validate the training data up front.
+    issues = validate(pd.concat([X], axis=1))
+    if issues:
+        logger.warning("Data validation issues: %s", issues)
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=args.test_size, random_state=RANDOM_STATE, stratify=y
     )
 
-    print("Tuning SVM hyperparameters via 5-fold cross-validation...")
-    search = build_search()
-    search.fit(X_train, y_train)
+    if args.optuna:
+        print(f"Tuning SVM hyperparameters with Optuna ({args.trials} trials)...")
+        from tune_optuna import tune
+        best_pipe, best_params, cv_auc = tune(X_train, y_train, n_trials=args.trials)
+        tuning = "optuna"
+    else:
+        print("Tuning SVM hyperparameters via GridSearchCV (5-fold CV)...")
+        search = build_search()
+        search.fit(X_train, y_train)
+        best_pipe, best_params, cv_auc = (
+            search.best_estimator_, search.best_params_, search.best_score_
+        )
+        tuning = "gridsearch"
 
-    print(f"\nBest params : {search.best_params_}")
-    print(f"CV ROC-AUC  : {search.best_score_:.4f}")
+    print(f"\nBest params : {best_params}")
+    print(f"CV ROC-AUC  : {cv_auc:.4f}")
 
     # Wrap the tuned pipeline so it exposes calibrated predict_proba.
     print("Calibrating probabilities...")
-    model = calibrate(search.best_estimator_, X_train, y_train)
+    model = calibrate(best_pipe, X_train, y_train)
 
     # --- Evaluate on the held-out test set ---
     y_pred = model.predict(X_test)
@@ -123,6 +157,9 @@ def main() -> None:
     print("\nClassification report:")
     print(classification_report(y_test, y_pred, target_names=["Rejected", "Shortlisted"]))
 
+    test_accuracy = float(accuracy_score(y_test, y_pred))
+    test_roc_auc = float(roc_auc_score(y_test, y_proba))
+
     # --- Persist the fitted pipeline plus metadata (versioned) ---
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     trained_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -131,14 +168,38 @@ def main() -> None:
         "version": MODEL_VERSION,
         "trained_at": trained_at,
         "algorithm": "SVM",
+        "tuning": tuning,
         "features": NUMERIC_FEATURES,
-        "best_params": search.best_params_,
-        "test_accuracy": float(accuracy_score(y_test, y_pred)),
-        "test_roc_auc": float(roc_auc_score(y_test, y_proba)),
+        "best_params": best_params,
+        "test_accuracy": test_accuracy,
+        "test_roc_auc": test_roc_auc,
     }
     joblib.dump(bundle, MODEL_PATH)
     logger.info("Model v%s trained at %s saved to %s", MODEL_VERSION, trained_at, MODEL_PATH)
     print(f"\n✓ Model v{MODEL_VERSION} saved to {MODEL_PATH}")
+
+    # --- Experiment tracking (MLflow, if available) ---
+    if _HAS_MLFLOW:
+        try:
+            mlflow.set_experiment("hiresense")
+            with mlflow.start_run():
+                mlflow.log_params({f"param_{k}": v for k, v in best_params.items()})
+                mlflow.log_param("tuning", tuning)
+                mlflow.log_param("version", MODEL_VERSION)
+                mlflow.log_metrics({
+                    "cv_roc_auc": float(cv_auc),
+                    "test_accuracy": test_accuracy,
+                    "test_roc_auc": test_roc_auc,
+                })
+            logger.info("Logged run to MLflow (./mlruns)")
+        except Exception as exc:  # pragma: no cover
+            logger.warning("MLflow logging skipped: %s", exc)
+
+    # --- Register in the model registry ---
+    if not args.no_registry:
+        from registry import register
+        entry = register(bundle, make_current=True)
+        print(f"✓ Registered as {entry['file']}")
 
 
 if __name__ == "__main__":

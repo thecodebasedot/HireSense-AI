@@ -13,6 +13,7 @@ import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
@@ -29,6 +30,10 @@ def candidate_models() -> dict:
         "Logistic Regression": LogisticRegression(max_iter=1000, random_state=RANDOM_STATE),
         "Random Forest": RandomForestClassifier(n_estimators=200, random_state=RANDOM_STATE),
         "Gradient Boosting": GradientBoostingClassifier(random_state=RANDOM_STATE),
+        "Neural Network (MLP)": MLPClassifier(
+            hidden_layer_sizes=(128, 64, 32), max_iter=300, early_stopping=True,
+            random_state=RANDOM_STATE,
+        ),
     }
 
 
