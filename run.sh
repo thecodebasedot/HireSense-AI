@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HireSense AI — এক কমান্ডে পুরো পাইপলাইন চালান
+# HireSense AI — run the whole pipeline with one command.
 # End-to-end: install deps -> generate data -> train -> demo prediction
 set -e
 

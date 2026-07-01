@@ -1,146 +1,143 @@
 # HireSense AI 🧠💼
 
-**চাকরির আবেদনকারী স্ক্রিনিং সিস্টেম — Support Vector Machine (SVM) দিয়ে তৈরি**
+**A job applicant screening system built with a Support Vector Machine (SVM).**
 
-HireSense AI একটি মেশিন লার্নিং ভিত্তিক সিস্টেম যা চাকরির আবেদনকারীদের
-স্বয়ংক্রিয়ভাবে স্ক্রিনিং করে — প্রার্থীর অভিজ্ঞতা, শিক্ষা, দক্ষতা, ইন্টারভিউ
-স্কোর ইত্যাদি বিশ্লেষণ করে সিদ্ধান্ত দেয় প্রার্থীকে **শর্টলিস্ট** করা হবে নাকি
-**বাতিল**।
-
-> An SVM-based system that automatically screens job applicants and predicts
-> whether each candidate should be **shortlisted** or **rejected**.
+HireSense AI is a machine-learning system that automatically screens job
+applicants. It analyses a candidate's experience, education, skills, interview
+scores and more, then predicts whether the candidate should be **shortlisted**
+or **rejected**.
 
 ---
 
-## 🎯 প্রজেক্ট সম্পর্কে (Overview)
+## 🎯 Overview
 
-| বিষয় | বিবরণ |
-|------|-------|
+| Item | Details |
+|------|---------|
 | **Project Name** | HireSense AI |
-| **Problem Solved** | চাকরির আবেদনকারীদের স্ক্রিনিং (Job Applicant Screening) |
+| **Problem Solved** | Job Applicant Screening |
 | **ML Algorithm** | Support Vector Machine (SVM) |
 | **Type** | Binary Classification (Shortlist / Reject) |
 
-কেন SVM? আবেদনকারীর ফিচারগুলো সংখ্যাগত এবং শ্রেণিগুলোর মধ্যে সীমানা অ-রৈখিক
-হতে পারে। SVM কার্নেল ট্রিকের মাধ্যমে এমন সীমানা ভালোভাবে শিখতে পারে এবং
-মাঝারি আকারের ডেটাসেটে দক্ষ।
+**Why SVM?** Applicant features are numeric and the boundary between classes
+can be non-linear. Through the kernel trick, an SVM learns such boundaries well
+and is efficient on small-to-medium datasets.
 
 ---
 
-## 📊 ফিচার (Features)
+## 📊 Features
 
-মডেলটি প্রতিটি আবেদনকারীর নিচের ৮টি বৈশিষ্ট্য ব্যবহার করে:
+The model uses the following eight attributes of each applicant:
 
-| ফিচার | অর্থ | রেঞ্জ |
-|-------|------|-------|
-| `years_experience` | প্রাসঙ্গিক কাজের অভিজ্ঞতা (বছর) | 0–25 |
-| `education_level` | শিক্ষাগত স্তর (0=HS, 1=Bachelor, 2=Master, 3=PhD) | 0–3 |
-| `skill_match_score` | চাকরির প্রয়োজনের সাথে দক্ষতার মিল | 0–100 |
-| `interview_score` | ইন্টারভিউ পারফরম্যান্স | 0–100 |
-| `communication_score` | যোগাযোগ দক্ষতা | 0–100 |
-| `num_certifications` | প্রাসঙ্গিক সার্টিফিকেশন সংখ্যা | 0–10 |
-| `num_projects` | সম্পন্ন প্রজেক্ট সংখ্যা | 0–20 |
-| `gpa` | সিজিপিএ | 2.0–4.0 |
+| Feature | Meaning | Range |
+|---------|---------|-------|
+| `years_experience` | Relevant work experience (years) | 0–25 |
+| `education_level` | Education level (0=HS, 1=Bachelor, 2=Master, 3=PhD) | 0–3 |
+| `skill_match_score` | How well skills match the job requirements | 0–100 |
+| `interview_score` | Interview performance | 0–100 |
+| `communication_score` | Communication skills | 0–100 |
+| `num_certifications` | Number of relevant certifications | 0–10 |
+| `num_projects` | Number of completed projects | 0–20 |
+| `gpa` | Grade point average | 2.0–4.0 |
 
-**Target:** `shortlisted` → `1` (শর্টলিস্ট) অথবা `0` (বাতিল)
+**Target:** `shortlisted` → `1` (shortlist) or `0` (reject)
 
 ---
 
-## 🗂️ প্রজেক্ট স্ট্রাকচার (Structure)
+## 🗂️ Project Structure
 
 ```
 HireSense-AI/
 ├── src/
-│   ├── config.py         # ফিচার স্কিমা, পাথ, ধ্রুবক
-│   ├── generate_data.py  # সিন্থেটিক আবেদনকারী ডেটাসেট জেনারেটর
-│   ├── train.py          # SVM ট্রেনিং + হাইপারপ্যারামিটার টিউনিং
-│   └── predict.py        # নতুন আবেদনকারী স্ক্রিনিং (single/batch)
+│   ├── config.py         # feature schema, paths, constants
+│   ├── generate_data.py  # synthetic applicant dataset generator
+│   ├── train.py          # SVM training + hyperparameter tuning
+│   └── predict.py        # screen new applicants (single / batch)
 ├── data/
-│   └── sample_applicants.csv   # উদাহরণ ইনপুট (batch scoring-এর জন্য)
-├── models/               # ট্রেইনড মডেল এখানে সেভ হয়
+│   └── sample_applicants.csv   # example input for batch scoring
+├── models/               # trained model is saved here
 ├── tests/
-│   └── test_pipeline.py  # বেসিক টেস্ট
-├── run.sh                # এক কমান্ডে পুরো পাইপলাইন
+│   └── test_pipeline.py  # smoke tests
+├── run.sh                # full pipeline in one command
 └── requirements.txt
 ```
 
 ---
 
-## 🚀 কীভাবে চালাবেন (Quick Start)
+## 🚀 Quick Start
 
-### ১. সবকিছু এক কমান্ডে
+### 1. Everything in one command
 
 ```bash
 bash run.sh
 ```
 
-এটি ডিপেন্ডেন্সি ইনস্টল করবে → ডেটা তৈরি করবে → মডেল ট্রেন করবে → ডেমো
-প্রেডিকশন দেখাবে।
+This installs dependencies → generates data → trains the model → shows demo
+predictions.
 
-### ২. ধাপে ধাপে (Step by step)
+### 2. Step by step
 
 ```bash
-# ডিপেন্ডেন্সি ইনস্টল
+# Install dependencies
 pip install -r requirements.txt
 
-# ১) সিন্থেটিক ডেটাসেট তৈরি
-python src/generate_data.py            # ডিফল্ট ২০০০ আবেদনকারী
-python src/generate_data.py -n 5000    # কাস্টম সংখ্যা
+# 1) Generate the synthetic dataset
+python src/generate_data.py            # default: 2000 applicants
+python src/generate_data.py -n 5000    # custom count
 
-# ২) SVM মডেল ট্রেন
+# 2) Train the SVM model
 python src/train.py
 
-# ৩) একজন আবেদনকারী স্ক্রিন করুন
+# 3) Screen a single applicant
 python src/predict.py \
     --years-experience 6 --education-level 2 \
     --skill-match-score 85 --interview-score 80 \
     --communication-score 78 --num-certifications 3 \
     --num-projects 8 --gpa 3.7
 
-# ৪) CSV থেকে একাধিক আবেদনকারী স্ক্রিন করুন
+# 4) Screen many applicants from a CSV
 python src/predict.py --csv data/sample_applicants.csv
 ```
 
 ---
 
-## 🧪 টেস্ট চালানো (Run tests)
+## 🧪 Running Tests
 
 ```bash
 python tests/test_pipeline.py
-# অথবা pytest থাকলে:
+# or, if pytest is installed:
 python -m pytest tests/ -q
 ```
 
 ---
 
-## ⚙️ মডেল কীভাবে কাজ করে (How it works)
+## ⚙️ How It Works
 
-1. **Preprocessing** — `StandardScaler` দিয়ে সব ফিচার স্ট্যান্ডার্ডাইজ করা হয়
-   (SVM দূরত্ব-নির্ভর, তাই স্কেলিং জরুরি)।
-2. **Model** — `SVC` (RBF ও linear কার্নেল), `GridSearchCV` দিয়ে `C`, `gamma`,
-   কার্নেল টিউন করা হয় ৫-fold ক্রস-ভ্যালিডেশনে (`roc_auc` স্কোরিং)।
-3. **Calibration** — `CalibratedClassifierCV` দিয়ে নির্ভরযোগ্য সম্ভাবনা
-   (probability) পাওয়া যায়, যাতে প্রতিটি সিদ্ধান্তের সাথে একটি কনফিডেন্স স্কোর
-   দেখানো যায়।
-4. **Output** — প্রতিটি আবেদনকারীর জন্য সিদ্ধান্ত (`Shortlist`/`Reject`) এবং
-   শর্টলিস্ট হওয়ার সম্ভাবনা।
+1. **Preprocessing** — all features are standardised with `StandardScaler`
+   (SVMs are distance-based, so scaling is essential).
+2. **Model** — `SVC` (RBF and linear kernels), tuned with `GridSearchCV` over
+   `C`, `gamma` and the kernel using 5-fold cross-validation (`roc_auc`
+   scoring).
+3. **Calibration** — `CalibratedClassifierCV` produces reliable probabilities
+   so each decision comes with a confidence score.
+4. **Output** — for each applicant, a decision (`Shortlist` / `Reject`) and the
+   probability of being shortlisted.
 
-### 📈 উদাহরণ পারফরম্যান্স (Sample metrics)
+### 📈 Sample Metrics
 
-সিন্থেটিক ২০০০-স্যাম্পল ডেটাসেটে (হেল্ড-আউট টেস্ট সেট):
+On a synthetic 2000-sample dataset (held-out test set):
 
 ```
 Accuracy : ~0.82
 ROC-AUC  : ~0.90
 ```
 
-> নোট: এখানে আসল হায়ারিং ডেটা ব্যবহার করা হয়নি (সংবেদনশীল ও গোপনীয়)। এর
-> পরিবর্তে বাস্তবসম্মত সিন্থেটিক ডেটা তৈরি করা হয়েছে যাতে পুরো পাইপলাইন
-> রিপ্রোডিউসিবলভাবে চালানো যায়। আসল ডেটা `data/applicants.csv` ফরম্যাটে
-> (একই কলাম) দিলে সরাসরি `python src/train.py` চালানো যাবে।
+> Note: no real hiring data is used here (it is sensitive and private).
+> Instead, a realistic synthetic dataset is generated so the whole pipeline
+> runs reproducibly. To use real data, provide it as `data/applicants.csv`
+> with the same columns and run `python src/train.py` directly.
 
 ---
 
-## 📄 লাইসেন্স (License)
+## 📄 License
 
-এই প্রজেক্টটি রিপোজিটরির [LICENSE](LICENSE) ফাইলের অধীনে প্রকাশিত।
+This project is released under the repository's [LICENSE](LICENSE) file.

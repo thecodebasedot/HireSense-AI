@@ -1,6 +1,5 @@
 """
-HireSense AI — SVM মডেল ট্রেনিং
-Train a Support Vector Machine to screen job applicants.
+HireSense AI — train a Support Vector Machine to screen job applicants.
 
 Pipeline: StandardScaler -> SVC. SVMs are distance-based, so scaling the
 features is essential. GridSearchCV tunes the kernel and regularisation.
@@ -42,7 +41,7 @@ def load_data(path=DATASET_PATH):
 
 
 def build_search() -> GridSearchCV:
-    """StandardScaler + SVC পাইপলাইন এবং হাইপারপ্যারামিটার গ্রিড।
+    """Build the StandardScaler + SVC pipeline and hyperparameter grid.
 
     Tuning uses SVC's decision_function via the roc_auc scorer, so we do not
     need probability estimates here. Calibrated probabilities are added to
@@ -75,7 +74,7 @@ def build_search() -> GridSearchCV:
 
 
 def calibrate(best_pipeline: Pipeline, X_train, y_train) -> CalibratedClassifierCV:
-    """সেরা পাইপলাইনটিকে ক্যালিব্রেট করে predict_proba সাপোর্ট যোগ করে।
+    """Calibrate the winning pipeline so it supports predict_proba.
 
     SVC(probability=True) is deprecated in scikit-learn 1.9; the recommended
     replacement is wrapping the estimator in CalibratedClassifierCV.

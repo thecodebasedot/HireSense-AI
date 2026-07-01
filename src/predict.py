@@ -1,6 +1,5 @@
 """
-HireSense AI — আবেদনকারী স্ক্রিনিং / প্রেডিকশন
-Screen new applicants with the trained SVM model.
+HireSense AI — screen new applicants with the trained SVM model.
 
 Usage:
     # Single applicant via flags
@@ -29,7 +28,7 @@ def load_model(path=MODEL_PATH):
 
 
 def screen(model, df: pd.DataFrame) -> pd.DataFrame:
-    """প্রতিটি আবেদনকারীর জন্য সিদ্ধান্ত ও সম্ভাবনা ফেরত দেয়।"""
+    """Return a decision and probability for each applicant."""
     missing = [c for c in NUMERIC_FEATURES if c not in df.columns]
     if missing:
         raise ValueError(f"Missing feature columns: {missing}")

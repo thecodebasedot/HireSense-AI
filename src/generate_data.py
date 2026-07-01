@@ -1,6 +1,5 @@
 """
-HireSense AI — সিন্থেটিক আবেদনকারী ডেটাসেট জেনারেটর
-Synthetic applicant dataset generator.
+HireSense AI — synthetic applicant dataset generator.
 
 Real hiring data is sensitive and rarely public, so we generate a realistic
 labelled dataset. Each applicant's "shortlisted" label is derived from a
@@ -16,7 +15,7 @@ from config import DATASET_PATH, NUMERIC_FEATURES, RANDOM_STATE, TARGET
 
 
 def generate(n_samples: int = 2000, seed: int = RANDOM_STATE) -> pd.DataFrame:
-    """একটি বাস্তবসম্মত আবেদনকারী ডেটাসেট তৈরি করে।"""
+    """Build a realistic synthetic applicant dataset."""
     rng = np.random.default_rng(seed)
 
     years_experience = np.clip(rng.gamma(shape=2.0, scale=2.5, size=n_samples), 0, 25)

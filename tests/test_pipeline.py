@@ -1,6 +1,5 @@
 """
-HireSense AI — বেসিক টেস্ট
-Smoke tests for data generation, training, and prediction.
+HireSense AI — smoke tests for data generation, training, and prediction.
 Run with:  python -m pytest tests/  (or  python tests/test_pipeline.py)
 """
 import sys
