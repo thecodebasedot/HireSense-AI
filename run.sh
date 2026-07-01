@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HireSense AI — এক কমান্ডে পুরো পাইপলাইন চালান
+# HireSense AI — run the whole pipeline with one command.
 # End-to-end: install deps -> generate data -> train -> demo prediction
 set -e
 
@@ -13,6 +13,15 @@ python src/generate_data.py
 
 echo "==> Training SVM model"
 python src/train.py
+
+echo "==> Generating evaluation plots"
+python src/visualize.py
+
+echo "==> Comparing SVM against other models"
+python src/compare_models.py
+
+echo "==> Fairness / bias audit"
+python src/fairness.py
 
 echo "==> Demo: screening a strong applicant"
 python src/predict.py \

@@ -16,6 +16,8 @@ env/
 models/*.joblib
 data/applicants.csv
 data/*_scored.csv
+reports/*.pdf
+reports/report_*.png
 
 # IDE / OS
 .vscode/

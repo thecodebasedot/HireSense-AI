@@ -1,0 +1,27 @@
+Jane Doe
+Senior Machine Learning Engineer
+jane.doe@example.com | +1-555-0101
+
+SUMMARY
+Machine learning engineer with 7 years of experience building and deploying
+production ML systems. Strong background in Python, SQL, and machine learning.
+
+EDUCATION
+Master of Science in Computer Science, Stanford University (2016)
+CGPA: 3.8 / 4.0
+
+EXPERIENCE
+Senior ML Engineer, Acme Corp (2019 - present)
+  - Led a project to build a recommendation engine serving 10M users.
+  - Delivered a fraud-detection project reducing losses by 30%.
+
+ML Engineer, DataWorks (2016 - 2019)
+  - Built a churn-prediction project using scikit-learn and XGBoost.
+
+SKILLS
+Python, SQL, Machine Learning, Docker, TensorFlow, Kubernetes
+
+CERTIFICATIONS
+AWS Certified Machine Learning - Specialty
+Google Cloud Professional Data Engineer
+Scrum Master Certified

@@ -1,11 +1,12 @@
 """
-HireSense AI — SVM মডেল ট্রেনিং
-Train a Support Vector Machine to screen job applicants.
+HireSense AI — train a Support Vector Machine to screen job applicants.
 
 Pipeline: StandardScaler -> SVC. SVMs are distance-based, so scaling the
 features is essential. GridSearchCV tunes the kernel and regularisation.
 """
 import argparse
+import logging
+from datetime import datetime, timezone
 
 import joblib
 import pandas as pd
@@ -24,10 +25,14 @@ from sklearn.metrics import (
 from config import (
     DATASET_PATH,
     MODEL_PATH,
+    MODEL_VERSION,
     NUMERIC_FEATURES,
     RANDOM_STATE,
     TARGET,
 )
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("hiresense.train")
 
 
 def load_data(path=DATASET_PATH):
@@ -42,7 +47,7 @@ def load_data(path=DATASET_PATH):
 
 
 def build_search() -> GridSearchCV:
-    """StandardScaler + SVC পাইপলাইন এবং হাইপারপ্যারামিটার গ্রিড।
+    """Build the StandardScaler + SVC pipeline and hyperparameter grid.
 
     Tuning uses SVC's decision_function via the roc_auc scorer, so we do not
     need probability estimates here. Calibrated probabilities are added to
@@ -75,7 +80,7 @@ def build_search() -> GridSearchCV:
 
 
 def calibrate(best_pipeline: Pipeline, X_train, y_train) -> CalibratedClassifierCV:
-    """সেরা পাইপলাইনটিকে ক্যালিব্রেট করে predict_proba সাপোর্ট যোগ করে।
+    """Calibrate the winning pipeline so it supports predict_proba.
 
     SVC(probability=True) is deprecated in scikit-learn 1.9; the recommended
     replacement is wrapping the estimator in CalibratedClassifierCV.
@@ -118,19 +123,22 @@ def main() -> None:
     print("\nClassification report:")
     print(classification_report(y_test, y_pred, target_names=["Rejected", "Shortlisted"]))
 
-    # --- Persist the fitted pipeline plus metadata ---
+    # --- Persist the fitted pipeline plus metadata (versioned) ---
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(
-        {
-            "model": model,
-            "features": NUMERIC_FEATURES,
-            "best_params": search.best_params_,
-            "test_accuracy": float(accuracy_score(y_test, y_pred)),
-            "test_roc_auc": float(roc_auc_score(y_test, y_proba)),
-        },
-        MODEL_PATH,
-    )
-    print(f"\n✓ Model saved to {MODEL_PATH}")
+    trained_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    bundle = {
+        "model": model,
+        "version": MODEL_VERSION,
+        "trained_at": trained_at,
+        "algorithm": "SVM",
+        "features": NUMERIC_FEATURES,
+        "best_params": search.best_params_,
+        "test_accuracy": float(accuracy_score(y_test, y_pred)),
+        "test_roc_auc": float(roc_auc_score(y_test, y_proba)),
+    }
+    joblib.dump(bundle, MODEL_PATH)
+    logger.info("Model v%s trained at %s saved to %s", MODEL_VERSION, trained_at, MODEL_PATH)
+    print(f"\n✓ Model v{MODEL_VERSION} saved to {MODEL_PATH}")
 
 
 if __name__ == "__main__":

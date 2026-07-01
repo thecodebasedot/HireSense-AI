@@ -1,6 +1,5 @@
 """
-HireSense AI — সিন্থেটিক আবেদনকারী ডেটাসেট জেনারেটর
-Synthetic applicant dataset generator.
+HireSense AI — synthetic applicant dataset generator.
 
 Real hiring data is sensitive and rarely public, so we generate a realistic
 labelled dataset. Each applicant's "shortlisted" label is derived from a
@@ -12,11 +11,17 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from config import DATASET_PATH, NUMERIC_FEATURES, RANDOM_STATE, TARGET
+from config import (
+    DATASET_PATH,
+    GROUP_COLUMN,
+    NUMERIC_FEATURES,
+    RANDOM_STATE,
+    TARGET,
+)
 
 
 def generate(n_samples: int = 2000, seed: int = RANDOM_STATE) -> pd.DataFrame:
-    """একটি বাস্তবসম্মত আবেদনকারী ডেটাসেট তৈরি করে।"""
+    """Build a realistic synthetic applicant dataset."""
     rng = np.random.default_rng(seed)
 
     years_experience = np.clip(rng.gamma(shape=2.0, scale=2.5, size=n_samples), 0, 25)
@@ -58,8 +63,13 @@ def generate(n_samples: int = 2000, seed: int = RANDOM_STATE) -> pd.DataFrame:
     prob = 1 / (1 + np.exp(-(score + noise)))
     df[TARGET] = (prob >= 0.5).astype(int)
 
-    # Guarantee column order: features first, target last.
-    return df[NUMERIC_FEATURES + [TARGET]]
+    # Protected attribute for fairness auditing. Drawn independently of the
+    # label so it is NOT used as a model feature — it only lets us check the
+    # model's decisions for demographic parity later.
+    df[GROUP_COLUMN] = rng.choice(["A", "B"], size=n_samples, p=[0.5, 0.5])
+
+    # Guarantee column order: features first, target, then protected attribute.
+    return df[NUMERIC_FEATURES + [TARGET, GROUP_COLUMN]]
 
 
 def main() -> None:

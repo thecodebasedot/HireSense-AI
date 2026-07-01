@@ -1,0 +1,9 @@
+{
+  "name": "Junior Developer",
+  "description": "Lenient screening for entry-level roles; potential over experience.",
+  "threshold": 0.4,
+  "requirements": {
+    "education_level": 1,
+    "gpa": 2.8
+  }
+}

@@ -1,0 +1,10 @@
+.git
+__pycache__
+*.pyc
+.venv
+venv
+reports/*.pdf
+data/*_scored.csv
+.github
+tests
+*.md

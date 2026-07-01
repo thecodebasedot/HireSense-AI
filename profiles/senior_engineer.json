@@ -1,0 +1,10 @@
+{
+  "name": "Senior Software Engineer",
+  "description": "Strict screening: strong experience and skills required.",
+  "threshold": 0.6,
+  "requirements": {
+    "years_experience": 5,
+    "education_level": 1,
+    "skill_match_score": 70
+  }
+}
